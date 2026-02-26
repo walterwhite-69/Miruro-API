@@ -384,18 +384,16 @@ async def home():
   "sources": [
     { "url": "https://.../master.m3u8", "isM3U8": true, "quality": "1080p" }
   ],
-  "tracks": [
-    { "file": "https://.../english.vtt", "label": "English", "kind": "captions" }
-  ],
   "intro": { "start": 0, "end": 90 },
   "outro": { "start": 1300, "end": 1420 }
-}</pre>
+}
+// Note: Streams are hard-subbed — subtitles are baked into the video.</pre>
             <div class="example">Try: <a target="_blank" href="/sources?episodeId=animepahe:6444:72975:1&provider=kiwi&anilistId=178005&category=sub">/sources?episodeId=animepahe:6444:72975:1&provider=kiwi&anilistId=178005&category=sub</a></div>
         </div>
 
         <div class="endpoint" style="border-left-color: #818cf8;">
             <div><span class="step-num">3</span> <span class="url" style="color: #818cf8;">Play the stream</span></div>
-            <div class="desc">Take the <b>sources[0].url</b> from Step 2 and feed it into any HLS-compatible player (Video.js, hls.js, VLC, mpv, etc.). Use the <b>tracks</b> for subtitles and <b>intro/outro</b> timestamps for skip buttons.</div>
+            <div class="desc">Take the <b>sources[0].url</b> from Step 2 and feed it into any HLS-compatible player (Video.js, hls.js, VLC, mpv, etc.). Subtitles are hard-subbed (baked into the video). Use <b>intro/outro</b> timestamps for skip buttons.</div>
         </div>
 
         <div class="footer">

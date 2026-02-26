@@ -143,7 +143,7 @@ Returns all episodes from multiple providers (kiwi, arc, zoro, jet, etc.) organi
 
 #### Step 2: Get Sources — `GET /sources?episodeId={id}&provider={provider}&anilistId={id}&category={sub|dub}`
 
-Returns the direct M3U8/HLS streaming URL, subtitle tracks, and intro/outro timestamps.
+Returns the direct M3U8/HLS streaming URL and intro/outro timestamps. Streams are **hard-subbed** (subtitles baked into the video).
 
 | Param | Description | Example |
 |---|---|---|
@@ -157,9 +157,6 @@ Returns the direct M3U8/HLS streaming URL, subtitle tracks, and intro/outro time
   "sources": [
     { "url": "https://.../master.m3u8", "isM3U8": true, "quality": "1080p" }
   ],
-  "tracks": [
-    { "file": "https://.../english.vtt", "label": "English", "kind": "captions" }
-  ],
   "intro": { "start": 0, "end": 90 },
   "outro": { "start": 1300, "end": 1420 }
 }
@@ -167,7 +164,7 @@ Returns the direct M3U8/HLS streaming URL, subtitle tracks, and intro/outro time
 
 #### Step 3: Play
 
-Feed `sources[0].url` into any HLS player (Video.js, hls.js, VLC, mpv). Use `tracks` for subtitles and `intro`/`outro` for skip buttons.
+Feed `sources[0].url` into any HLS player (Video.js, hls.js, VLC, mpv). Subtitles are hard-subbed (baked into the video). Use `intro`/`outro` timestamps for skip buttons.
 
 <br>
 
