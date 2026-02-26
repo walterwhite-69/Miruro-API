@@ -2,7 +2,7 @@
   <img src="https://www.miruro.to/icon-512x512.png" alt="Miruro API" width="150" style="border-radius: 20%; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);">
   <br><br>
   
-  # Miruro Final API
+  # Miruro API
   
   **The ultimate, decrypted, and fully reverse-engineered native Python backend for Miruro.**
   
@@ -13,40 +13,36 @@
 
 ---
 
-## 🎭 The "Fort Knox" Illusion
+## What This Does
 
-Lol, they really thought they were sleek. 
+Miruro's frontend communicates with its backend through a `secure/pipe` tunnel that base64-encodes, gzip-compresses, and encrypts every request. This project bypasses all of that and gives you simple, direct endpoints to:
 
-Padding JSON payloads with URL-safe Base64, compressing it with rigid gzip buffers, AND dynamically routing keys through Elliptic Curve cryptography just to hide anime episodes? It’s absolute overkill. They built their site's internal secure API like the Pentagon, locking down the front door while leaving the server racks wide open for us.
+1. **Search** for anime (via AniList GraphQL)
+2. **Get metadata** for any anime (posters, descriptions, genres, scores)
+3. **List episodes** with decoded episode IDs
+4. **Get M3U8 streaming URLs** for any episode
 
-This codebase completely bypasses the proprietary `secure/pipe` tunnel, intercepts their upstream routing, and exposes the pure, hyper-fast endpoints natively in Python.
-
-Welcome to the fully decoupled, transparent, and ultra-fast Miruro API wrapper.
-
-<br>
-
-## 🚀 Technical Highlights
-
-- **Bypass Over-Engineering:** Completely subverts the original Web Crypto API implementations by generating exact memory-aligned byte requests natively.
-- **Zero Headless Browsers:** No bulky Selenium or Playwright instances. It operates purely on ultra-lightweight async HTTP requests.
-- **AniList GraphQL Hijack:** We intelligently map search and metadata directly through AniList's free public GraphQL, bypassing internal rate-limit overhead.
-- **Direct M3U8 Source Extraction:** Connects directly to the decrypted pipe endpoint to map internal provider logic and rip the final 1080p M3U8 CDN links.
-- **Stunning UI documentation:** Fully integrated HTML Dark-UI straight from the root route.
+No headless browsers, no Selenium — just lightweight async HTTP requests.
 
 <br>
 
-## 🛠️ Endpoints Overview
+## Endpoints
 
-We break down the anime streaming sequence into 4 logical, sequentially dependent steps:
+The streaming flow is sequential — each step feeds into the next:
 
-### 1. `GET /search?query={anime_name}`
-Bypasses the UI cache to query AniList's public GraphQL for highly accurate metadata mapping, IDs, and cover art.
+### Step 1: Search — `GET /search?query={name}`
 
-### 2. `GET /info/{anilist_id}`
-Hooks into the upstream metadata to retrieve high-definition posters, descriptions, formats, and score metrics.
+Returns matching anime with IDs, titles, posters, episode counts, and airing status.
 
-### 3. `GET /episodes/{anilist_id}`
-Cracks the secure pipe tunnel to dump the raw provider array (kiwi, arc, telli) and auto-decodes internal episode tracking sequences into plain text strings. You must extract the readable `episodeId` parameter from this payload for the final step.
+### Step 2: Info — `GET /info/{anilist_id}`
+
+Returns detailed metadata for a specific anime (HD poster, description, genres, average score).
+
+### Step 3: Episodes — `GET /episodes/{anilist_id}`
+
+Returns the episode list from all available providers (kiwi, arc, telli). The episode IDs are automatically decoded from base64 into plain text.
+
+**You need the `id` field from this response for the next step:**
 
 ```json
 {
@@ -55,7 +51,7 @@ Cracks the secure pipe tunnel to dump the raw provider array (kiwi, arc, telli) 
       "episodes": {
         "sub": [
           {
-            "id": "animepahe:6444:73255:1", // <-- THIS IS THE PLAIN TEXT episodeId!
+            "id": "animepahe:6444:73255:1",
             "number": 1
           }
         ]
@@ -65,56 +61,56 @@ Cracks the secure pipe tunnel to dump the raw provider array (kiwi, arc, telli) 
 }
 ```
 
-### 4. `GET /sources?episodeId={id}&provider={provider}&anilistId={anilist_id}`
-The holy grail endpoint. Submits the decoded provider matrix back into the upstream tunnel to force return the direct playable M3U8 and HLS streaming nodes for various HD qualities.
+### Step 4: Sources — `GET /sources?episodeId={id}&provider={provider}&anilistId={anilist_id}&category={sub|dub}`
+
+Returns the direct M3U8/HLS streaming URLs, subtitle tracks, and intro/outro timestamps.
+
+| Parameter   | Description                                      | Example                      |
+|-------------|--------------------------------------------------|------------------------------|
+| `episodeId` | Plain-text episode ID from Step 3                | `animepahe:6444:73255:1`     |
+| `provider`  | Provider name from Step 3                        | `kiwi`, `arc`, `telli`       |
+| `anilistId` | AniList ID from Step 1                           | `178005`                     |
+| `category`  | Audio track *(optional, defaults to `sub`)*      | `sub` or `dub`               |
+
+**Example response:**
 
 ```json
 {
-  "Author": "Walter",
-  "Github": "github.com/walterwhite-69",
   "sources": [
     {
-      "url": "https://pro.ultracloud.cc/m3u8/?u=zTlM7GtoUrClhoUISgrciIsiT_N7NhOxp4iAS01Tn9vEIBetLn1Mq_zRkQEMH9qJwHUKrXs3HK",
-      "isM3U8": true,
-      "quality": "auto"
-    },
-    {
-      "url": "https://vault-16.owocdn.top/m3u8/1080p/video.m3u8",
+      "url": "https://example.com/stream/video.m3u8",
       "isM3U8": true,
       "quality": "1080p"
     }
   ],
   "tracks": [
     {
-      "file": "https://vtt.zoro.to/sub/naruto-episode-1.vtt",
+      "file": "https://example.com/subs/english.vtt",
       "label": "English",
       "kind": "captions",
       "default": true
     }
   ],
-  "intro": {
-    "start": 120,
-    "end": 210
-  }
+  "intro": { "start": 120, "end": 210 }
 }
 ```
 
 <br>
 
-## 💻 Deployment
+## Setup
 
 ```bash
 git clone https://github.com/walterwhite-69/Miruro-API.git
 cd Miruro-API
-pip install fastapi uvicorn httpx
+pip install -r requirements.txt  
 uvicorn api:app --host 0.0.0.0 --port 8000
 ```
-Then visit `http://localhost:8000/` in your browser to experience the beautiful interactive API mapping documentation. 
+
+Then open `http://localhost:8000/` for interactive API docs.
 
 <br>
 
-## 📜 Disclaimer
-This project is for educational purposes and API integrity research only. The author takes absolutely zero responsibility for network usage. Code contains zero skiddable artifacts.
+## Disclaimer
 
 <br>
 
