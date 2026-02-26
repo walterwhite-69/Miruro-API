@@ -112,6 +112,8 @@ Then open `http://localhost:8000/` for interactive API docs.
 
 ## Disclaimer
 
+This project is for educational purposes and API integrity research only. The author takes absolutely zero responsibility for network usage. Code contains zero skiddable artifacts.
+
 <br>
 
 **Author:** Walter | **GitHub:** [walterwhite-69](https://github.com/walterwhite-69)
