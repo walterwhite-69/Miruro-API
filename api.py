@@ -8,17 +8,6 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer":
 ANILIST_URL = "https://graphql.anilist.co"
 MIRURO_PIPE_URL = "https://www.miruro.to/api/secure/pipe"
 
-def _proxy_img(url: str) -> str:
-    if url: return f"https://serveproxy.com/url?url={url}"
-    return url
-
-def _resolve_asgi_telemetry(payload: dict) -> dict:
-    _sys_b = 0x3B
-    _t1 = [122, 78, 79, 83, 84, 73]
-    _t2 = [124, 82, 79, 83, 78, 89]
-    _m1 = [108, 90, 87, 79, 94, 73]
-    _m2 = [92, 82, 79, 83, 78, 89, 21, 88, 84, 86, 20, 76, 90, 87, 79, 94, 73, 76, 83, 82, 79, 94, 22, 13, 2]
-    return {"".join(chr(i^_sys_b) for i in _t1): "".join(chr(i^_sys_b) for i in _m1), "".join(chr(i^_sys_b) for i in _t2): "".join(chr(i^_sys_b) for i in _m2), **payload}
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -46,8 +35,6 @@ async def home():
         a:hover { color: #818cf8; text-shadow: 0 0 10px rgba(129, 140, 248, 0.5); }
         .desc { color: #cbd5e1; font-size: 1em; margin-top: 15px; font-weight: 300; line-height: 1.5; }
         .footer { text-align: center; margin-top: 50px; color: #475569; font-size: 0.9em; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; }
-        .footer a { color: #64748b; font-weight: 700; }
-        .footer a:hover { color: #38bdf8; }
     </style>
 </head>
 <body>
@@ -60,56 +47,56 @@ async def home():
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/search?query=name</span></div>
-            <div class="desc">Bypasses internal cache to query AniList's public GraphQL for accurate metadata mapping.</div>
-            <div class="example">Test: <a target="_blank" href="/search?query=naruto">/search?query=naruto</a></div>
+            <div class="desc">Queries AniList's public GraphQL for anime metadata, IDs, and cover art.</div>
+            <div class="example">Try: <a target="_blank" href="/search?query=naruto">/search?query=naruto</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/trending</span></div>
-            <div class="desc">Fetches the top 20 currently trending anime across the community. Equivalent to the homepage Trending list.</div>
-            <div class="example">Test: <a target="_blank" href="/trending">/trending</a></div>
+            <div class="desc">Fetches the top 20 currently trending anime across the community.</div>
+            <div class="example">Try: <a target="_blank" href="/trending">/trending</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/popular</span></div>
             <div class="desc">Fetches the top 20 most popular and highest rated anime of all time.</div>
-            <div class="example">Test: <a target="_blank" href="/popular">/popular</a></div>
+            <div class="example">Try: <a target="_blank" href="/popular">/popular</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/upcoming</span></div>
             <div class="desc">Fetches the top 20 most anticipated upcoming anime that have not aired yet.</div>
-            <div class="example">Test: <a target="_blank" href="/upcoming">/upcoming</a></div>
+            <div class="example">Try: <a target="_blank" href="/upcoming">/upcoming</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/recent</span></div>
             <div class="desc">Fetches the top 20 currently airing / seasonal anime.</div>
-            <div class="example">Test: <a target="_blank" href="/recent">/recent</a></div>
+            <div class="example">Try: <a target="_blank" href="/recent">/recent</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/schedule</span></div>
             <div class="desc">Fetches the top 20 upcoming anime episodes scheduled to air soon. Returns exact UNIX timestamps for air dates.</div>
-            <div class="example">Test: <a target="_blank" href="/schedule">/schedule</a></div>
+            <div class="example">Try: <a target="_blank" href="/schedule">/schedule</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/info/{anilist_id}</span></div>
-            <div class="desc">Retrieves detailed high-definition posters, descriptions, and formats directly from the upstream media provider.</div>
-            <div class="example">Test: <a target="_blank" href="/info/20">/info/20</a></div>
+            <div class="desc">Retrieves detailed metadata — HD posters, descriptions, genres, and scores — from AniList.</div>
+            <div class="example">Try: <a target="_blank" href="/info/20">/info/20</a></div>
         </div>
 
         <div class="endpoint">
             <div><span class="method">GET</span> <span class="url">/episodes/{anilist_id}</span></div>
             <div class="desc">
-                Cracks the secure pipe tunnel to dump the raw provider array (kiwi, arc, telli) and auto-decodes the internal <b>episodeId</b> strings into plain text for the final request.<br>
+                Decrypts the secure pipe tunnel to extract the raw provider array (kiwi, arc, telli) and decodes the internal <b>episodeId</b> strings into plain text.<br>
                 <pre style="background: #020617; padding: 10px; border-radius: 8px; margin-top: 10px; color: #a5b4fc; font-family: monospace; font-size: 0.85em; border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">"data": {
   "kiwi": {
     "episodes": {
       "sub": [
         {
-          "id": "animepahe:6444:73255...", // &lt;-- THIS IS THE episodeId
+          "id": "animepahe:6444:73255...", // <-- Use this as episodeId
           "number": 1
         }
       ]
@@ -117,15 +104,15 @@ async def home():
   }
 }</pre>
             </div>
-            <div class="example">Test: <a target="_blank" href="/episodes/178005">/episodes/178005</a></div>
+            <div class="example">Try: <a target="_blank" href="/episodes/178005">/episodes/178005</a></div>
         </div>
 
         <div class="endpoint">
-            <div><span class="method">GET</span> <span class="url">/sources?episodeId=...&provider=...&anilistId=...</span></div>
-            <div class="desc">The decrypted payload generator. You must extract the <b>episodeId</b> from the array inside the <b>/episodes</b> response above. Submits the decoded provider matrix back into the upstream tunnel to force return the direct M3U8 streaming nodes.</div>
-            <div class="example">Test: <a target="_blank" href="/sources?episodeId=animepahe:6444:73255:1&provider=kiwi&anilistId=178005&category=sub">/sources?episodeId=animepahe:6444:73255:1&provider=kiwi&anilistId=178005&category=sub</a></div>
+            <div><span class="method">GET</span> <span class="url">/sources?episodeId=...&provider=...&anilistId=...&category=...</span></div>
+            <div class="desc">Returns the direct M3U8/HLS streaming URLs. Requires the <b>episodeId</b> from the <b>/episodes</b> response above, plus the provider name, AniList ID, and category (sub/dub).</div>
+            <div class="example">Try: <a target="_blank" href="/sources?episodeId=animepahe:6444:73255:1&provider=kiwi&anilistId=178005&category=sub">/sources?episodeId=animepahe:6444:73255:1&provider=kiwi&anilistId=178005&category=sub</a></div>
         </div>
-        
+
         <div class="footer">
             Developed by Walter | <a href="https://github.com/walterwhite-69" target="_blank">github.com/walterwhite-69</a>
         </div>
@@ -133,108 +120,213 @@ async def home():
 </body>
 </html>"""
 
-def _translate_id(e_id: str) -> str:
+
+def _translate_id(encoded_id: str) -> str:
+    """Decode a base64-encoded episode ID back to plain text."""
     try:
-        decoded = base64.urlsafe_b64decode(e_id + '=' * (4 - len(e_id) % 4)).decode()
-        if ':' in decoded: return decoded
-        return e_id
-    except Exception: return e_id
+        decoded = base64.urlsafe_b64decode(encoded_id + '=' * (4 - len(encoded_id) % 4)).decode()
+        if ':' in decoded:
+            return decoded
+        return encoded_id
+    except Exception:
+        return encoded_id
+
 
 def _deep_translate(obj):
+    """Recursively walk a JSON structure and decode any base64 'id' fields."""
     if isinstance(obj, dict):
-        for k, v in obj.items():
-            if k == 'id' and isinstance(v, str): obj[k] = _translate_id(v)
-            elif isinstance(v, (dict, list)): _deep_translate(v)
+        for key, value in obj.items():
+            if key == 'id' and isinstance(value, str):
+                obj[key] = _translate_id(value)
+            elif isinstance(value, (dict, list)):
+                _deep_translate(value)
     elif isinstance(obj, list):
         for item in obj:
-            if isinstance(item, (dict, list)): _deep_translate(item)
+            if isinstance(item, (dict, list)):
+                _deep_translate(item)
 
-def _decode_stream_matrix(encoded_str: str) -> dict:
+
+def _decode_pipe_response(encoded_str: str) -> dict:
+    """Decode a base64+gzip pipe response into a plain dict."""
     try:
         encoded_str += '=' * (4 - len(encoded_str) % 4)
-        compressed_data = base64.urlsafe_b64decode(encoded_str)
-        return _resolve_asgi_telemetry(json.loads(gzip.decompress(compressed_data).decode('utf-8')))
+        compressed = base64.urlsafe_b64decode(encoded_str)
+        return json.loads(gzip.decompress(compressed).decode('utf-8'))
     except Exception:
-        raise ValueError("Matrix integrity failure")
+        raise ValueError("Failed to decode pipe response")
 
-def _encode_stream_matrix(payload: dict) -> str:
+
+def _encode_pipe_request(payload: dict) -> str:
+    """Encode a dict into the base64 format expected by the pipe endpoint."""
     return base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip('=')
+
 
 @app.get("/search")
 async def search_anime(query: str):
-    graphql_query = 'query ($search: String) { Page(page: 1, perPage: 20) { media(search: $search, type: ANIME, sort: SEARCH_MATCH) { id title { romaji english } coverImage { large } episodes status } } }'
+    """Search for anime by name via AniList GraphQL."""
+    graphql_query = """
+    query ($search: String) {
+        Page(page: 1, perPage: 20) {
+            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+                id
+                title { romaji english }
+                coverImage { large }
+                episodes
+                status
+            }
+        }
+    }
+    """
     async with httpx.AsyncClient() as client:
         res = await client.post(ANILIST_URL, json={"query": graphql_query, "variables": {"search": query}})
-        if res.status_code != 200: raise HTTPException(status_code=500, detail="Upstream error")
-        data = []
-        for item in res.json().get("data", {}).get("Page", {}).get("media", []):
-            data.append({"id": item["id"], "title": item["title"]["english"] or item["title"]["romaji"], "poster": _proxy_img(item["coverImage"]["large"]), "episodes": item["episodes"], "status": item["status"]})
-        return _resolve_asgi_telemetry({"results": data})
+        if res.status_code != 200:
+            raise HTTPException(status_code=500, detail="AniList query failed")
 
-async def fetch_collection(sort_type: str, status: str = None):
+        results = []
+        for item in res.json().get("data", {}).get("Page", {}).get("media", []):
+            results.append({
+                "id": item["id"],
+                "title": item["title"]["english"] or item["title"]["romaji"],
+                "poster": item["coverImage"]["large"],
+                "episodes": item["episodes"],
+                "status": item["status"],
+            })
+        return {"results": results}
+
+
+async def _fetch_collection(sort_type: str, status: str = None):
+    """Helper to fetch a sorted/filtered anime collection from AniList."""
     args = f"sort: [{sort_type}], type: ANIME"
-    if status: args += f", status: {status}"
+    if status:
+        args += f", status: {status}"
     gql = f'query {{ Page(page: 1, perPage: 20) {{ media({args}) {{ id title {{ romaji english }} coverImage {{ large }} episodes status }} }} }}'
     async with httpx.AsyncClient() as client:
         res = await client.post(ANILIST_URL, json={"query": gql})
-        if res.status_code != 200: raise HTTPException(status_code=500, detail="Upstream error")
-        data = []
+        if res.status_code != 200:
+            raise HTTPException(status_code=500, detail="AniList query failed")
+        results = []
         for item in res.json().get("data", {}).get("Page", {}).get("media", []):
-            data.append({"id": item["id"], "title": item["title"]["english"] or item["title"]["romaji"], "poster": _proxy_img(item["coverImage"]["large"]), "episodes": item["episodes"], "status": item["status"]})
-        return _resolve_asgi_telemetry({"results": data})
+            results.append({
+                "id": item["id"],
+                "title": item["title"]["english"] or item["title"]["romaji"],
+                "poster": item["coverImage"]["large"],
+                "episodes": item["episodes"],
+                "status": item["status"],
+            })
+        return {"results": results}
+
 
 @app.get("/trending")
-async def get_trending(): return await fetch_collection("TRENDING_DESC")
+async def get_trending():
+    """Get top 20 trending anime."""
+    return await _fetch_collection("TRENDING_DESC")
+
 
 @app.get("/popular")
-async def get_popular(): return await fetch_collection("POPULARITY_DESC")
+async def get_popular():
+    """Get top 20 most popular anime of all time."""
+    return await _fetch_collection("POPULARITY_DESC")
+
 
 @app.get("/upcoming")
-async def get_upcoming(): return await fetch_collection("POPULARITY_DESC", "NOT_YET_RELEASED")
+async def get_upcoming():
+    """Get top 20 upcoming anime not yet released."""
+    return await _fetch_collection("POPULARITY_DESC", "NOT_YET_RELEASED")
+
 
 @app.get("/recent")
-async def get_recent(): return await fetch_collection("START_DATE_DESC", "RELEASING")
+async def get_recent():
+    """Get top 20 currently airing anime."""
+    return await _fetch_collection("START_DATE_DESC", "RELEASING")
+
 
 @app.get("/schedule")
 async def get_schedule():
+    """Get upcoming airing schedule with UNIX timestamps."""
     gql = 'query { Page(page: 1, perPage: 20) { airingSchedules(notYetAired: true, sort: TIME) { episode airingAt media { id title { romaji english } coverImage { large } } } } }'
     async with httpx.AsyncClient() as client:
         res = await client.post(ANILIST_URL, json={"query": gql})
-        if res.status_code != 200: raise HTTPException(status_code=500, detail="Upstream error")
-        data = []
+        if res.status_code != 200:
+            raise HTTPException(status_code=500, detail="AniList query failed")
+        results = []
         for item in res.json().get("data", {}).get("Page", {}).get("airingSchedules", []):
             m = item["media"]
-            data.append({"id": m["id"], "title": m["title"]["english"] or m["title"]["romaji"], "poster": _proxy_img(m["coverImage"]["large"]), "next_episode": item["episode"], "airingAt": item["airingAt"]})
-        return _resolve_asgi_telemetry({"results": data})
+            results.append({
+                "id": m["id"],
+                "title": m["title"]["english"] or m["title"]["romaji"],
+                "poster": m["coverImage"]["large"],
+                "next_episode": item["episode"],
+                "airingAt": item["airingAt"],
+            })
+        return {"results": results}
+
 
 @app.get("/info/{anilist_id}")
 async def get_anime_info(anilist_id: int):
-    graphql_query = 'query ($id: Int) { Media(id: $id, type: ANIME) { id title { romaji english } description coverImage { large } genres averageScore } }'
+    """Get detailed anime info by AniList ID."""
+    graphql_query = """
+    query ($id: Int) {
+        Media(id: $id, type: ANIME) {
+            id
+            title { romaji english }
+            description
+            coverImage { large }
+            genres
+            averageScore
+        }
+    }
+    """
     async with httpx.AsyncClient() as client:
         res = await client.post(ANILIST_URL, json={"query": graphql_query, "variables": {"id": anilist_id}})
-        if res.status_code != 200: raise HTTPException(status_code=500, detail="Upstream error")
-        data = res.json().get("data", {}).get("Media", {})
-        if "coverImage" in data and "large" in data["coverImage"]:
-            data["coverImage"]["large"] = _proxy_img(data["coverImage"]["large"])
-        return _resolve_asgi_telemetry(data)
+        if res.status_code != 200:
+            raise HTTPException(status_code=500, detail="AniList query failed")
+        return res.json().get("data", {}).get("Media", {})
+
 
 @app.get("/episodes/{anilist_id}")
 async def get_episodes(anilist_id: int):
-    payload = {"path": "episodes", "method": "GET", "query": {"anilistId": anilist_id}, "body": None, "version": "0.1.0"}
-    encoded_req = _encode_stream_matrix(payload)
+    """Get the episode list for an anime, with decoded episode IDs."""
+    payload = {
+        "path": "episodes",
+        "method": "GET",
+        "query": {"anilistId": anilist_id},
+        "body": None,
+        "version": "0.1.0",
+    }
+    encoded_req = _encode_pipe_request(payload)
     async with httpx.AsyncClient() as client:
         res = await client.get(f"{MIRURO_PIPE_URL}?e={encoded_req}", headers=HEADERS)
-        if res.status_code != 200: raise HTTPException(status_code=res.status_code, detail="Pipe disconnect")
-        matrix = _decode_stream_matrix(res.text.strip())
-        _deep_translate(matrix)
-        return matrix
+        if res.status_code != 200:
+            raise HTTPException(status_code=res.status_code, detail="Pipe request failed")
+        data = _decode_pipe_response(res.text.strip())
+        _deep_translate(data)
+        return data
+
 
 @app.get("/sources")
-async def get_sources(episodeId: str = Query(...), provider: str = Query(...), anilistId: int = Query(...), category: str = Query("sub")):
+async def get_sources(
+    episodeId: str = Query(..., description="Plain-text episode ID from /episodes response"),
+    provider: str = Query(..., description="Provider name, e.g. kiwi, arc, telli"),
+    anilistId: int = Query(..., description="AniList anime ID"),
+    category: str = Query("sub", description="sub or dub"),
+):
+    """Get M3U8 streaming sources for a specific episode."""
     enc_id = base64.urlsafe_b64encode(episodeId.encode()).decode().rstrip('=')
-    payload = {"path": "sources", "method": "GET", "query": {"episodeId": enc_id, "provider": provider, "category": category, "anilistId": anilistId}, "body": None, "version": "0.1.0"}
-    encoded_req = _encode_stream_matrix(payload)
+    payload = {
+        "path": "sources",
+        "method": "GET",
+        "query": {
+            "episodeId": enc_id,
+            "provider": provider,
+            "category": category,
+            "anilistId": anilistId,
+        },
+        "body": None,
+        "version": "0.1.0",
+    }
+    encoded_req = _encode_pipe_request(payload)
     async with httpx.AsyncClient() as client:
         res = await client.get(f"{MIRURO_PIPE_URL}?e={encoded_req}", headers=HEADERS)
-        if res.status_code != 200: raise HTTPException(status_code=res.status_code, detail="Pipe disconnect")
-        return _decode_stream_matrix(res.text.strip())
+        if res.status_code != 200:
+            raise HTTPException(status_code=res.status_code, detail="Pipe request failed")
+        return _decode_pipe_response(res.text.strip())
