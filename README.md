@@ -19,7 +19,7 @@ Miruro's frontend communicates with its backend through a `secure/pipe` tunnel t
 
 1. **Search & filter** anime with full AniList metadata
 2. **Get complete anime info** — characters, staff, relations, recommendations, trailer, stats, and all metadata in one request
-3. **Browse collections** — trending, popular, upcoming, recent, schedule — all paginated
+3. **Browse collections** — trending, popular, upcoming, recent, schedule, and spotlight — all paginated
 4. **List episodes** with decoded episode IDs from multiple providers
 5. **Get M3U8 streaming URLs** for any episode
 6. **Autocomplete** search suggestions for dropdown UIs
@@ -59,9 +59,10 @@ No headless browsers, no Selenium — just lightweight async HTTP requests.
 |---|---|
 | `GET /trending` | Currently trending anime |
 | `GET /popular` | Most popular anime of all time |
-| `GET /upcoming` | Most anticipated anime not yet released |
+| `GET /upcoming` | Most anticipated upcoming anime |
 | `GET /recent` | Currently airing / this season's anime |
-| `GET /schedule` | Next episodes airing soon — includes `airingAt` (UNIX timestamp), `timeUntilAiring` (seconds), `next_episode` |
+| `GET /spotlight` | Curated "What's Hot" list (trending + popular) |
+| `GET /schedule` | Airing schedule for the next week |
 
 All collection endpoints accept `page` and `per_page` query params and return:
 
@@ -122,10 +123,10 @@ Returns all episodes from multiple providers (kiwi, arc, zoro, jet, etc.) organi
       "episodes": {
         "sub": [
           {
-            "id": "animepahe:6444:72975:1",
+            "id": "watch/kiwi/178005/sub/animepahe-1",
             "number": 1,
             "title": "Episode Title",
-            "image": "https://...",
+            "image": "https://serveproxy.com/url?url=...",
             "airDate": "2026-01-04",
             "duration": 1420,
             "description": "...",
@@ -141,30 +142,38 @@ Returns all episodes from multiple providers (kiwi, arc, zoro, jet, etc.) organi
 }
 ```
 
-#### Step 2: Get Sources — `GET /sources?episodeId={id}&provider={provider}&anilistId={id}&category={sub|dub}`
+#### Step 2: Get Sources [SUPER SIMPLE]
 
-Returns the direct M3U8/HLS streaming URL and intro/outro timestamps. Streams are **hard-subbed** (subtitles baked into the video).
+Just take the direct `id` from the Step 1 response and use it as the URL. No manual parameters or complex IDs needed!
 
-| Param | Description | Example |
-|---|---|---|
-| `episodeId` | The `id` string from Step 1 | `animepahe:6444:72975:1` |
-| `provider` | Provider name from Step 1 | `kiwi`, `arc`, `zoro` |
-| `anilistId` | AniList ID of the anime | `178005` |
-| `category` | Audio track (default: `sub`) | `sub` or `dub` |
+**Endpoint:** `GET /{id}`
+**Example:** `GET /watch/kiwi/178005/sub/animepahe-1`
 
 ```json
 {
-  "sources": [
-    { "url": "https://.../master.m3u8", "isM3U8": true, "quality": "1080p" }
+  "streams": [
+    { "url": "https://.../master.m3u8", "type": "hls", "quality": "1080p" }
+  ],
+  "subtitles": [
+    { "file": "https://...", "label": "English", "kind": "captions" }
   ],
   "intro": { "start": 0, "end": 90 },
   "outro": { "start": 1300, "end": 1420 }
 }
 ```
 
+> [!TIP]
+> This endpoint automatically handles decryption, provider selection, and category matching. It returns the direct M3U8/HLS streaming URL and intro/outro timestamps.
+
+<details>
+<summary><b>Fallback / Detailed Option</b></summary>
+If you need manual control, you can use the traditional endpoint:
+`GET /sources?episodeId=...&provider=...&anilistId=...&category=...`
+</details>
+
 #### Step 3: Play
 
-Feed `sources[0].url` into any HLS player (Video.js, hls.js, VLC, mpv). Subtitles are hard-subbed (baked into the video). Use `intro`/`outro` timestamps for skip buttons.
+Feed `streams[0].url` into any HLS player (Video.js, hls.js, VLC, mpv). Subtitles are either **hard-subbed** (baked into the video for kiwi/pahe) or provided in the `subtitles` array (VTT links for zoro/arc). Use `intro`/`outro` timestamps for skip buttons.
 
 <br>
 
