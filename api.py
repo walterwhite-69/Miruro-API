@@ -1,9 +1,55 @@
-import base64, json, gzip, httpx
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+import base64, json, gzip, httpx, os
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="Miruro API", version="2.0")
+
+# --- Security Configuration ---
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
+API_KEY_NAME = "x-api-key"
+VALID_API_KEY = os.getenv("API_KEY")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def secure_api(request: Request, call_next):
+    # Allow home page (docs) without restrictions
+    if request.url.path in ["/", "/docs", "/redoc", "/openapi.json"]:
+        return await call_next(request)
+
+    # 1. Check API Key
+    api_key = request.headers.get(API_KEY_NAME)
+    if VALID_API_KEY and api_key == VALID_API_KEY:
+        return await call_next(request)
+
+    # 2. Check Origin or Referer
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+
+    is_allowed = False
+    for allowed in ALLOWED_ORIGINS:
+        if (origin and origin.startswith(allowed)) or (referer and referer.startswith(allowed)):
+            is_allowed = True
+            break
+            
+    if not is_allowed:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Access forbidden: Invalid Origin, Referer, or API Key."}
+        )
+
+    return await call_next(request)
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.to/"}
 ANILIST_URL = "https://graphql.anilist.co"
