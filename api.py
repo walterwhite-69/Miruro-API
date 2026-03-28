@@ -272,7 +272,7 @@ async def home():
 <body>
     <div class="container">
         <div class="header">
-            <img src="https://www.miruro.online/icon-512x512.png" alt="Logo" class="logo">
+            <img src="https://www.miruro.to/icon-512x512.png" alt="Logo" class="logo">
             <h1>Miruro Native API</h1>
             <div class="subtitle">Decrypted, bypassed, and reverse-engineered anime streaming API</div>
             <div class="version">v2.0 — Full Data &amp; Pagination</div>
