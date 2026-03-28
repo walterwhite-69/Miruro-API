@@ -1,14 +1,22 @@
-import base64, json, gzip, httpx
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+import base64, json, gzip, httpx, os
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
+from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="Miruro API", version="2.0")
 
+# --- Security Configuration ---
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
+API_KEY_NAME = "x-api-key"
+VALID_API_KEY = os.getenv("API_KEY")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,13 +39,25 @@ def _inject_source_slugs(data: dict, anilist_id: int):
     """Transform episode IDs into simplified path-based slugs: watch/PROV/ALID/CAT/PREFIX-NUMBER"""
     providers = data.get("providers", {})
     for provider_name, provider_data in providers.items():
+        if not isinstance(provider_data, dict):
+            continue
         episodes = provider_data.get("episodes", {})
+        if not isinstance(episodes, dict):
+            # Some providers return a flat list — wrap it
+            if isinstance(episodes, list):
+                provider_data["episodes"] = {"sub": episodes}
+                episodes = provider_data["episodes"]
+            else:
+                continue
         for category, ep_list in episodes.items():
+            if not isinstance(ep_list, list):
+                continue
             for ep in ep_list:
+                if not isinstance(ep, dict):
+                    continue
                 if "id" in ep and "number" in ep:
                     orig_id = ep["id"]
                     prefix = orig_id.split(":")[0] if ":" in orig_id else orig_id
-                    # Slug: watch/PROV/ALID/CAT/PREFIX-NUMBER
                     ep["id"] = f"watch/{provider_name}/{anilist_id}/{category}/{prefix}-{ep['number']}"
     return data
 
