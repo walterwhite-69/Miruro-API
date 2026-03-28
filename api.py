@@ -22,6 +22,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def secure_api(request: Request, call_next):
+    # Allow home page (docs) without restrictions
+    if request.url.path in ["/", "/docs", "/redoc", "/openapi.json"]:
+        return await call_next(request)
+
+    # 1. Check API Key
+    api_key = request.headers.get(API_KEY_NAME)
+    if VALID_API_KEY and api_key == VALID_API_KEY:
+        return await call_next(request)
+
+    # 2. Check Origin or Referer
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+
+    is_allowed = False
+    for allowed in ALLOWED_ORIGINS:
+        if (origin and origin.startswith(allowed)) or (referer and referer.startswith(allowed)):
+            is_allowed = True
+            break
+            
+    if not is_allowed:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Access forbidden: Invalid Origin, Referer, or API Key."}
+        )
+
+    return await call_next(request)
+
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.online/"}
 ANILIST_URL = "https://graphql.anilist.co"
 MIRURO_PIPE_URL = "https://www.miruro.online/api/secure/pipe"
