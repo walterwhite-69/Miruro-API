@@ -22,57 +22,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.middleware("http")
-async def secure_api(request: Request, call_next):
-    # Allow home page (docs) without restrictions
-    if request.url.path in ["/", "/docs", "/redoc", "/openapi.json"]:
-        return await call_next(request)
-
-    # 1. Check API Key
-    api_key = request.headers.get(API_KEY_NAME)
-    if VALID_API_KEY and api_key == VALID_API_KEY:
-        return await call_next(request)
-
-    # 2. Check Origin or Referer
-    origin = request.headers.get("origin")
-    referer = request.headers.get("referer")
-
-    is_allowed = False
-    for allowed in ALLOWED_ORIGINS:
-        if (origin and origin.startswith(allowed)) or (referer and referer.startswith(allowed)):
-            is_allowed = True
-            break
-            
-    if not is_allowed:
-        return JSONResponse(
-            status_code=403,
-            content={"detail": "Access forbidden: Invalid Origin, Referer, or API Key."}
-        )
-
-    return await call_next(request)
-
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.to/"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.online/"}
 ANILIST_URL = "https://graphql.anilist.co"
-MIRURO_PIPE_URL = "https://www.miruro.to/api/secure/pipe"
+MIRURO_PIPE_URL = "https://www.miruro.online/api/secure/pipe"
 
 def _proxy_img(url: str) -> str:
-    """Prepend serveproxy to a URL if it exists."""
-    if url and isinstance(url, str) and (url.startswith("http://") or url.startswith("https://")):
-        return f"https://serveproxy.com/url?url={url}"
+    # Proxy removed — return original image URL
     return url
 
+
 def _proxy_deep_images(obj):
-    """Recursively wrap image URLs in an object with serveproxy."""
-    image_keys = {'coverImage', 'bannerImage', 'thumbnail', 'poster', 'image', 'large', 'medium', 'extraLarge'}
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key in image_keys and isinstance(value, str) and value.startswith("http"):
-                obj[key] = _proxy_img(value)
-            elif isinstance(value, (dict, list)):
-                _proxy_deep_images(value)
-    elif isinstance(obj, list):
-        for item in obj:
-            _proxy_deep_images(item)
+    # Proxy removed — return data unchanged
     return obj
 
 def _inject_source_slugs(data: dict, anilist_id: int):
