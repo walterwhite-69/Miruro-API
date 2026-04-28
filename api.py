@@ -52,7 +52,7 @@ async def secure_api(request: Request, call_next):
     return await call_next(request)
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.tv/"}
-ANILIST_URL = "https://api.jikan.moe/v4/"
+ANILIST_URL = "https://api.jikan.moe/v4/anime?q="
 MIRURO_PIPE_URL = "https://www.miruro.to/api/secure/pipe"
 
 def _proxy_img(url: str) -> str:
