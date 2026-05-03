@@ -53,7 +53,7 @@ async def secure_api(request: Request, call_next):
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.tv/"}
 ANILIST_URL = "https://graphql.anilist.co"
-MIRURO_PIPE_URL = "https://www.miruro.to/api/secure/pipe"
+MIRURO_PIPE_URL = "https://www.miruro.tv/api/secure/pipe"
 
 def _proxy_img(url: str) -> str:
     # Proxy removed — return original image URL
