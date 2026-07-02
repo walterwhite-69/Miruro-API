@@ -1,9 +1,11 @@
-import base64, json, gzip, httpx, os
+import base64, json, gzip, os, asyncio
+from playwright.async_api import async_playwright, Browser
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
@@ -51,9 +53,179 @@ async def secure_api(request: Request, call_next):
 
     return await call_next(request)
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Referer": "https://www.miruro.tv/"}
+# ─── Playwright browser singleton ────────────────────────────────────────────
+
+_playwright = None
+_browser: Browser = None
+_browser_lock = asyncio.Lock()
+
+async def _get_browser() -> Browser:
+    """Return (and lazily launch) a shared Playwright Chromium browser."""
+    global _playwright, _browser
+    async with _browser_lock:
+        if _browser is None or not _browser.is_connected():
+            _playwright = await async_playwright().start()
+            _browser = await _playwright.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+            )
+    return _browser
+
+@app.on_event("shutdown")
+async def _shutdown():
+    global _playwright, _browser
+    if _browser:
+        await _browser.close()
+    if _playwright:
+        await _playwright.stop()
+
+
+# ─── Reusable warm context ───────────────────────────────────────────────────
+
+_warm_ctx = None
+_ctx_lock = asyncio.Lock()
+_last_warmup = 0
+_WARMUP_TTL = 600          # Keep context warm for 10 minutes
+_WARMUP_TIMEOUT = 15_000   # 15s max for origin solve
+
+async def _get_warm_context():
+    """Return a CF-warmed browser context. Creates/invalidates under lock."""
+    global _warm_ctx, _last_warmup
+    async with _ctx_lock:
+        now = time.time()
+        if _warm_ctx is not None and (now - _last_warmup) < _WARMUP_TTL:
+            return _warm_ctx
+
+        browser = await _get_browser()
+
+        # Nuke old context if expired
+        if _warm_ctx is not None:
+            try:
+                await _warm_ctx.close()
+            except Exception:
+                pass
+
+        _warm_ctx = await browser.new_context(
+            viewport={"width": 1920, "height": 1080},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            locale="en-US",
+            timezone_id="America/New_York",
+        )
+
+        # Stealth applies to ALL pages in this context
+        await _warm_ctx.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+            window.chrome = { runtime: {} };
+        """)
+
+        # Warm-up: visit origin once so CF sets cookies on the context
+        page = await _warm_ctx.new_page()
+        try:
+            await page.goto(
+                MIRURO_ORIGIN,
+                wait_until="domcontentloaded",
+                timeout=_WARMUP_TIMEOUT,
+            )
+            await page.wait_for_load_state("networkidle", timeout=_WARMUP_TIMEOUT)
+            await page.wait_for_timeout(2_000)  # Cookie write buffer
+        except Exception as e:
+            print(f"Warmup warning: {e}")
+        finally:
+            await page.close()
+
+        _last_warmup = now
+        return _warm_ctx
+
+
+async def _pipe_fetch(encoded_req: str) -> str:
+    """Fetch from the pipe using a lightweight page inside the warm context."""
+    ctx = await _get_warm_context()
+    page = await ctx.new_page()
+
+    # CRITICAL: Navigate to origin first so the page has a real origin
+    try:
+        await page.goto(MIRURO_ORIGIN, wait_until="commit", timeout=10_000)
+    except Exception:
+        pass
+
+    url = f"{MIRURO_PIPE_URL}?e={encoded_req}"
+    try:
+        result = await page.evaluate(
+            """async ({url, referer}) => {
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Referer': referer,
+                        'Accept': 'application/json, text/plain, */*',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                    },
+                    credentials: 'include'
+                });
+                const text = await res.text();
+                return { status: res.status, body: text };
+            }""",
+            {"url": url, "referer": f"{MIRURO_ORIGIN}/"}
+        )
+    finally:
+        await page.close()
+
+    status = result.get("status", 0)
+    body = result.get("body", "")
+
+    if status != 200:
+        print(f"Pipe non-200 (status {status}): {body[:300]}")
+        # Force re-warm and retry once
+        async with _ctx_lock:
+            global _last_warmup
+            _last_warmup = 0
+
+        ctx = await _get_warm_context()
+        page = await ctx.new_page()
+        try:
+            await page.goto(MIRURO_ORIGIN, wait_until="commit", timeout=10_000)
+        except Exception:
+            pass
+
+        try:
+            result = await page.evaluate(
+                """async ({url, referer}) => {
+                    const res = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Referer': referer,
+                            'Accept': 'application/json, text/plain, */*',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                        },
+                        credentials: 'include'
+                    });
+                    const text = await res.text();
+                    return { status: res.status, body: text };
+                }""",
+                {"url": url, "referer": f"{MIRURO_ORIGIN}/"}
+            )
+        finally:
+            await page.close()
+
+        status = result.get("status", 0)
+        body = result.get("body", "")
+        if status != 200:
+            raise HTTPException(status_code=status or 502, detail="Pipe request failed")
+
+    return body.strip()
+
 ANILIST_URL = "https://graphql.anilist.co"
-MIRURO_PIPE_URL = "https://www.miruro.tv/api/secure/pipe"
+MIRURO_PIPE_URL = "https://www.miruro.to/api/secure/pipe"
+MIRURO_ORIGIN  = "https://www.miruro.to"
 
 def _proxy_img(url: str) -> str:
     # Proxy removed — return original image URL
@@ -100,13 +272,10 @@ async def _fetch_raw_episodes(anilist_id: int) -> dict:
         "version": "0.1.0",
     }
     encoded_req = _encode_pipe_request(payload)
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        res = await client.get(f"{MIRURO_PIPE_URL}?e={encoded_req}", headers=HEADERS)
-        if res.status_code != 200:
-            raise HTTPException(status_code=res.status_code, detail="Pipe request failed")
-        data = _decode_pipe_response(res.text.strip())
-        _deep_translate(data)
-        return data
+    raw = await _pipe_fetch(encoded_req)
+    data = _decode_pipe_response(raw)
+    _deep_translate(data)
+    return data
 
 # ─── Shared GraphQL Fragments ────────────────────────────────────────────────
 
@@ -987,12 +1156,9 @@ async def get_sources(
         "version": "0.1.0",
     }
     encoded_req = _encode_pipe_request(payload)
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        res = await client.get(f"{MIRURO_PIPE_URL}?e={encoded_req}", headers=HEADERS)
-        if res.status_code != 200:
-            raise HTTPException(status_code=res.status_code, detail="Pipe request failed")
-        return _proxy_deep_images(_decode_pipe_response(res.text.strip()))
-
+    raw = await _pipe_fetch(encoded_req)
+    return _decode_pipe_response(raw)
+    
 @app.get("/watch/{provider}/{anilist_id}/{category}/{slug}")
 async def get_watch_sources(provider: str, anilist_id: int, category: str, slug: str):
     """The super simple sources endpoint resolving slugs (prefix-number) back to provider IDs."""
