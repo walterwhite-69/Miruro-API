@@ -3,3 +3,4 @@ httpx
 uvicorn
 python-dotenv
 curl_cffi
+beautifulsoup4
